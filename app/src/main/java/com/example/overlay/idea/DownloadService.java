@@ -5,15 +5,18 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
@@ -103,6 +106,7 @@ public class DownloadService extends IntentService {
             }
 
             installAPk(apkFile);
+            //installApp(getPackageName(),apkFile.getPath());
 //
 //            mNotifyManager.cancel(NOTIFICATION_ID);
 
@@ -134,17 +138,64 @@ public class DownloadService extends IntentService {
             ProcessBuilder builder = new ProcessBuilder(command);
             builder.start();
         } catch (IOException ignored) {
-
+            Log.e(TAG,ignored.toString());
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             Log.e(TAG, "installAPk: " + apkFile.getAbsolutePath());
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             Uri contentUri = FileProvider.getUriForFile(this, "com.example.overlay.idea.fileprovider",apkFile);
             intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
+            //startInstallPermissionSettingActivity();
         } else {
             intent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
         }
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        getApplication().startActivity(intent);
+
+    }
+
+    private void startInstallPermissionSettingActivity() {
+        //注意这个是8.0新API
+        Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
+    }
+
+
+    public boolean installApp(String packageName,String apkPath) {
+        Process process = null;
+        BufferedReader successResult = null;
+        BufferedReader errorResult = null;
+        StringBuilder successMsg = new StringBuilder();
+        StringBuilder errorMsg = new StringBuilder();
+        try {
+            process = new ProcessBuilder("pm", "install", "-i", packageName, "-r", apkPath).start();
+            successResult = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            errorResult = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String s;
+            while ((s = successResult.readLine()) != null) {
+                successMsg.append(s);
+            }
+            while ((s = errorResult.readLine()) != null) {
+                errorMsg.append(s);
+            }
+        } catch (Exception e) {
+        } finally {
+            try {
+                if (successResult != null) {
+                    successResult.close();
+                }
+                if (errorResult != null) {
+                    errorResult.close();
+                }
+            } catch (Exception e) {
+            }
+            if (process != null) {
+                process.destroy();
+            }
+        }
+        Log.e("result", "" + errorMsg.toString());
+        //如果含有“success”认为安装成功
+        return successMsg.toString().equalsIgnoreCase("success");
     }
 }
