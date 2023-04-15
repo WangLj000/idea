@@ -24,7 +24,7 @@ add_library( # Sets the name of the library.
         # Provides a relative path to your source file(s).
         jni.cpp
         bspatch.c
-        bzip2 )
+        bzip2 DiffUtils.c )
 
 
 # Specifies libraries CMake should link to your target library. You

@@ -20,4 +20,5 @@ public class PatchUtils {
 	 * @return
 	 */
 	public static native int patch(String oldApkPath, String newApkPath, String patchPath);
+	public static native int genDiff(String oldApkPath, String newApkPath, String patchPath);
 }
